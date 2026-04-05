@@ -1,0 +1,51 @@
+# =========================================================================
+# 用于减小镜像大小的多阶段 Dockerfile
+# =========================================================================
+
+FROM python:3.11 as builder
+WORKDIR /app
+RUN pip install --upgrade pip
+COPY requirements.txt .
+# 安装到系统 site-packages（而不是 --user），方便多阶段复制
+RUN pip install --no-cache-dir -r requirements.txt
+RUN python -c "import torchvision.models as models; models.resnet50(pretrained=True)"
+
+
+
+FROM python:3.11-slim-bookworm
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    libglib2.0-0 \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# 从 builder 复制 Python 包（系统 site-packages）
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+
+# 从 builder 复制模型缓存到用户的家目录
+COPY --from=builder /root/.cache /home/apiuser/.cache
+
+COPY src/ ./src/
+COPY .env.example .env
+
+ENV PYTHONPATH=/app \
+    MODEL_NAME=resnet50 \
+    DEVICE=cpu \
+    HOST=0.0.0.0 \
+    PORT=5000 \
+    LOG_LEVEL=INFO \
+    PYTHONUNBUFFERED=1
+
+# 创建非 root 用户并修复权限
+RUN useradd -m -u 1000 apiuser && \
+    chown -R apiuser:apiuser /app /home/apiuser/.cache
+
+USER apiuser
+EXPOSE 5000
+HEALTHCHECK --interval=10s --timeout=5s --start-interval=30s --retries=3 \
+    CMD curl -f http://localhost:5000/health || exit 1
+
+CMD ["python", "./src/app_fast.py"]

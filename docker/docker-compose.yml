@@ -1,0 +1,47 @@
+version: '3.8'
+services:
+  model-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.promax
+    image: model-api:v1.0.promax
+    container_name: model-api-dev.promax
+    ports:
+      - "5000:5000"
+    environment:
+      - MODEL_NAME=resnet50
+      - DEVICE=cpu
+      - HOST=0.0.0.0
+      - PORT=5000
+      - LOG_LEVEL=INFO
+      - DEBUG=false
+    env_file:
+      - ../.env
+    volumes:
+      - ../src:/app/src:ro
+      - ../logs:/app/logs
+      - model-cache:/root/.cache/torch
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - model-api-networks
+         

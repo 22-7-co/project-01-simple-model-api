@@ -9,15 +9,53 @@
 许可证: MIT
 """
 
+'''
+================================= test session starts =================================
+platform linux -- Python 3.11.15, pytest-9.0.2, pluggy-1.5.0 -- /home/22-7/.conda/envs/tf-gpu/bin/python
+cachedir: .pytest_cache
+rootdir: /home/22-7/Dev/ai-infra-learn/ai-infra-project/junior-engineer/project-01-simple-model-api
+configfile: pytest.ini
+collected 26 items                                                                    
+
+tests/test_model.py::test_model_loader_initialization PASSED                    [  3%]
+tests/test_model.py::test_model_loader_with_invalid_model_name PASSED           [  7%]
+tests/test_model.py::test_model_loads_successfully PASSED                       [ 11%]
+tests/test_model.py::test_class_labels_loaded PASSED                            [ 15%]
+tests/test_model.py::test_model_on_correct_device PASSED                        [ 19%]
+tests/test_model.py::test_preprocess_rgb_image PASSED                           [ 23%]
+tests/test_model.py::test_preprocess_grayscale_image PASSED                     [ 26%]
+tests/test_model.py::test_preprocess_rgba_image PASSED                          [ 30%]
+tests/test_model.py::test_preprocess_different_sizes PASSED                     [ 34%]
+tests/test_model.py::test_preprocess_none_image_raises_error PASSED             [ 38%]
+tests/test_model.py::test_predict_returns_correct_number PASSED                 [ 42%]
+tests/test_model.py::test_prediction_format PASSED                              [ 46%]
+tests/test_model.py::test_prediction_confidence_valid PASSED                    [ 50%]
+tests/test_model.py::test_prediction_ranks_sequential PASSED                    [ 53%]
+tests/test_model.py::test_prediction_sorted_by_confidence PASSED                [ 57%]
+tests/test_model.py::test_predict_without_loaded_model_raises_error PASSED      [ 61%]
+tests/test_model.py::test_prediction_deterministic PASSED                       [ 65%]
+tests/test_model.py::test_get_model_info PASSED                                 [ 69%]
+tests/test_model.py::test_get_model_info_before_loading PASSED                  [ 73%]
+tests/test_model.py::test_validate_image_with_valid_image PASSED                [ 76%]
+tests/test_model.py::test_validate_image_with_none PASSED                       [ 80%]
+tests/test_model.py::test_validate_image_with_large_dimensions PASSED           [ 84%]
+tests/test_model.py::test_prediction_performance PASSED                         [ 88%]
+tests/test_model.py::test_preprocessing_performance PASSED                      [ 92%]
+tests/test_model.py::test_model_memory_usage PASSED                             [ 96%]
+tests/test_model.py::test_full_prediction_pipeline PASSED                       [100%]
+
+================================= 26 passed in 23.78s =================================
+'''
+
 import pytest
 from PIL import Image
 import torch
 import numpy as np
 
-from model_loader import ModelLoader
+from src.model_loader import ModelLoader
 from src.config import Config
 
-@pytest.fixture(scope="module")
+@pytest.fixture()
 def model_loader():
     '''
     为测试创建 ModelLoader 实例。
@@ -32,8 +70,10 @@ def model_loader():
     '''
     return ModelLoader(model_name="resnet50", device="cpu")
 
-@pytest.fixture(scope="module") # 一个测试文件只创建一次，共用一个实例
-def sample_image():
+
+
+@pytest.fixture()  
+def loaded_model_loader(model_loader):
     '''
     创建一个**已完成模型加载**的 ModelLoader 实例。
 
@@ -48,7 +88,21 @@ def sample_image():
     model_loader.load()
     return model_loader
 
-@pytest.fixture(scope="module")
+@pytest.fixture()
+def sample_image():
+    '''
+    创建用于测试的示例 RGB 图像。
+
+    待实现：测试夹具
+    - 创建 RGB 图像 (模式='RGB')
+    - 返回 PIL Image 对象
+
+    返回：
+        PIL Image 对象（RGB 格式）
+    '''
+    return Image.new('RGB', (224, 224), color='red')
+
+@pytest.fixture()
 def grayscale_image():
     '''
     创建用于测试的灰度图像。
@@ -94,7 +148,7 @@ def test_model_loader_with_invalid_model_name():
         loader.load()
     return
 
-def test_model_loads_successfully(sample_image):
+def test_model_loads_successfully(model_loader):
     '''
     测试模型是否成功加载。
 
@@ -104,7 +158,7 @@ def test_model_loads_successfully(sample_image):
     - 模型不在训练模式（应为评估模式）
     '''
     model_loader.load()
-    assert sample_image.model is not None
+    assert model_loader.model is not None
     assert isinstance(model_loader.model, torch.nn.Module)
     assert not model_loader.model.training
     return
@@ -146,7 +200,7 @@ def test_model_on_correct_device(model_loader):
 
 
 # =========================================================================
-# Preprocessing Tests
+# 预处理测试
 # =========================================================================
 
 def test_preprocess_rgb_image(loaded_model_loader, sample_image):
@@ -229,7 +283,7 @@ def test_preprocess_none_image_raises_error(loaded_model_loader):
 
 
 # =========================================================================
-# Prediction Tests
+# 预测测试
 # =========================================================================
 
 def test_predict_returns_correct_number(loaded_model_loader, sample_image):
@@ -357,7 +411,7 @@ def test_prediction_deterministic(loaded_model_loader, sample_image):
 
 
 # =========================================================================
-# Model Info Tests
+# 模型信息测试
 # =========================================================================
 
 def test_get_model_info(loaded_model_loader):
@@ -377,7 +431,7 @@ def test_get_model_info(loaded_model_loader):
     assert 'input_shape' in info
     assert 'output_classes' in info
     assert info['name'] == 'resnet50'
-    assert info['framework'] == 'pytorch'
+    assert info['framework'] == 'PyTorch'
     assert info['input_shape'] == [224, 224, 3]
     assert info['output_classes'] == 1000
     pass
@@ -398,7 +452,7 @@ def test_get_model_info_before_loading(model_loader):
 
 
 # =========================================================================
-# Image Validation Tests
+# 图像验证测试
 # =========================================================================
 
 def test_validate_image_with_valid_image(loaded_model_loader, sample_image):
@@ -446,7 +500,7 @@ def test_validate_image_with_large_dimensions(loaded_model_loader):
 
 
 # =========================================================================
-# Performance Tests
+# 性能测试
 # =========================================================================
 
 def test_prediction_performance(loaded_model_loader, sample_image):
@@ -482,7 +536,7 @@ def test_preprocessing_performance(loaded_model_loader, sample_image):
 
 
 # =========================================================================
-# Memory Tests
+# 内存测试
 # =========================================================================
 
 def test_model_memory_usage(loaded_model_loader):
@@ -504,7 +558,7 @@ def test_model_memory_usage(loaded_model_loader):
 
 
 # =========================================================================
-# Integration Tests
+# 集成测试
 # =========================================================================
 
 def test_full_prediction_pipeline(model_loader):
@@ -519,27 +573,27 @@ def test_full_prediction_pipeline(model_loader):
     - 预测
     - 断言所有步骤成功
     """
-    # Initialize
+    # 初始化
     loader = ModelLoader(model_name='resnet50', device='cpu')
     
-    # Load
+    # 加载
     loader.load()
     assert loader.model is not None
     
-    # Create image
+    # 创建图像
     image = Image.new('RGB', (500, 500), color='blue')
     
-    # Predict
+    # 预测
     predictions = loader.predict(image, top_k=5)
     
-    # Validate
+    # 验证
     assert len(predictions) == 5
     assert all(0 <= p['confidence'] <= 1 for p in predictions)
     return
 
 
 # =========================================================================
-# Run Tests
+# 运行测试
 # =========================================================================
 
 if __name__ == "__main__":

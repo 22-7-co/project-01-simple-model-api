@@ -16,7 +16,7 @@ import torch
 import torch.nn as nn
 from torchvision import models, transforms
 import requests
-from config import Config
+from src.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -112,13 +112,14 @@ class ModelLoader:
         """
         try:
             url = 'https://raw.githubusercontent.com/pytorch/hub/master/imagenet_classes.txt'
-            response = requests.get(url, timeout=18)
+            # url = 'https://raw.gitmirror.com/pytorch/hub/master/imagenet_classes.txt'
+            response = requests.get(url, timeout=100)
             response.raise_for_status()
             labels = response.text.strip().split('\n')
             return {i: label for i, label in enumerate(labels)}
         except Exception as e:
             logger.error(f"Failed to load ImageNet labels: {e}")
-            raise RuntimeError
+            raise RuntimeError("Could not load class labels")
     def preprocess(self, image: Image.Image) -> torch.Tensor:
         """
         对模型输入图像预处理。
@@ -142,7 +143,7 @@ class ModelLoader:
             return tensor
         except Exception as e:
             logger.error(f"Error during image preprocessing: {e}")
-            raise RuntimeError(f"Error during image preprocessing: {e}")
+            raise ValueError(f"Error during image preprocessing: {e}")
         return image
 
     def predict(self, image: Image.Image, top_k: int = 5) -> List[Dict[str, any]]:
@@ -168,17 +169,16 @@ class ModelLoader:
             probabilities = torch.nn.functional.softmax(outputs[0], dim=0)
             top_probs, top_indices = torch.topk(probabilities, top_k)
             predictions = []
-            for rank, (prob, idx) in enumerate(zip(top_probs, top_indices)):
-                label = self.class_labels.get(idx.item(), "Unknown")
+            for rank, (prob, idx) in enumerate(zip(top_probs, top_indices), start=1):
                 predictions.append({
-                    "rank": rank + 1,
-                    "label": label,
-                    "probability": prob.item()
+                    'class': self.class_labels[idx.item()],
+                    "rank": rank ,
+                    'confidence': float(prob.item())
                 })
             return predictions
         except Exception as e:
-            logger.error(f"Error during prediction: {e}")
-            raise RuntimeError(f"Error during prediction: {e}")
+            logger.error(f"Prediction failed: {e}")
+            raise ValueError(f"Failed to generate prediction: {e}")
     def get_model_info(self) -> Dict[str, any]:
         """
         获取模型的元数据和相关信息。
@@ -210,12 +210,12 @@ class ModelLoader:
         if image is None:
             return False, "Image is None"
         width, height = image.size
-        max_dim = self.config.MAX_FILE_SIZE
+        max_dim = self.config.MAX_IMAGE_DIMENSION
         print("max_dim: ", max_dim)
         if max_dim is None:
             return False, "MAX_IMAGE_DIMENSION is not set in config"
         if width > max_dim or height > max_dim:
-                return False, f"Image dimensions {width}x{height} exceed maximum allowed {max_dim}x{max_dim}"
+                return False, f"Image dimensions too large: {width}x{height}"
         if image.mode not in ['RGB', 'RGBA', 'L', 'R']:
             return False, f"Unsupported image mode: {image.mode}"
         return True, None

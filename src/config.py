@@ -1,7 +1,7 @@
 '''
-Config Management Module
-Author: 22-7
-License: MIT
+配置管理模块
+作者: 22-7
+许可证: MIT
 '''
 
 import json
@@ -55,7 +55,7 @@ class Config:
             'DEBUG': cls.DEBUG,
             'API_VERSION': cls.API_VERSION,
             'MAX_FILE_SIZE': cls.MAX_FILE_SIZE,
-            'NAX_IMAGE_DIMENSION': cls.NAX_IMAGE_DIMENSION,
+            'MAX_IMAGE_DIMENSION': cls.MAX_IMAGE_DIMENSION,
             'REQUEST_TIMEOUT': cls.REQUEST_TIMEOUT,
             'DEFAULT_TOP_K': cls.DEFAULT_TOP_K,
             'MAX_TOP_K': cls.MAX_TOP_K,
@@ -74,7 +74,7 @@ def get_env_bool(key: str, default: bool = False) -> bool:
     """
     从环境变量读取布尔值。
 
-    TODO: 实现布尔转换
+    实现布尔转换
     - 获取环境变量的值
     - 转换为布尔类型
     - 未设置则返回默认值
@@ -87,7 +87,7 @@ def get_env_int(key: str, default: int) -> int:
     """
     从环境变量读取整数。
 
-    TODO: 实现整数转换
+    实现整数转换
     - 获取环境变量的值
     - 转换为整数
     - 未设置或非法时返回默认值
